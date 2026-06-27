@@ -4,123 +4,270 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>家計簿</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div id="app">
-    <header>
-      <h1>家計簿</h1>
-      <div class="month-nav">
-        <button id="prev-month">&#8249;</button>
-        <span id="current-month-label"></span>
-        <button id="next-month">&#8250;</button>
-      </div>
-      <nav class="tabs">
-        <button class="tab-btn active" data-tab="daily">日別入力</button>
-        <button class="tab-btn" data-tab="summary">月次サマリー</button>
-        <button class="tab-btn" data-tab="fixed">収入・固定費</button>
+  <div id="layout">
+
+    <!-- サイドバー -->
+    <aside id="sidebar">
+      <div class="sidebar-logo">家計簿</div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-page="input">
+          <span class="nav-icon">📝</span>
+          <span class="nav-label">入力</span>
+        </button>
+        <button class="nav-item" data-page="report">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">収支管理</span>
+        </button>
       </nav>
-    </header>
+    </aside>
 
-    <main>
-      <!-- 日別入力タブ -->
-      <section id="tab-daily" class="tab-content active">
-        <div class="daily-header">
-          <button id="open-add-modal" class="btn-primary">＋ 支出を追加</button>
-        </div>
-        <div class="daily-summary-bar">
-          <span>今月の変動費合計：<strong id="daily-total">¥0</strong></span>
-        </div>
-        <div id="daily-list"></div>
-      </section>
+    <!-- オーバーレイ（モバイル用） -->
+    <div id="sidebar-overlay"></div>
 
-      <!-- 月次サマリータブ -->
-      <section id="tab-summary" class="tab-content">
-        <div class="summary-grid">
-          <div class="summary-card income">
-            <h3>収入合計</h3>
-            <p id="summary-income">¥0</p>
+    <!-- メインエリア -->
+    <div id="main-wrapper">
+
+      <!-- ヘッダー -->
+      <header id="main-header">
+        <button id="hamburger">☰</button>
+        <div class="month-nav">
+          <button id="prev-month">&#8249;</button>
+          <span id="current-month-label"></span>
+          <button id="next-month">&#8250;</button>
+        </div>
+        <div class="header-sub-tabs" id="sub-tabs">
+          <!-- サブタブはページごとに切り替え -->
+        </div>
+      </header>
+
+      <!-- コンテンツ -->
+      <main id="main-content">
+
+        <!-- 入力ページ -->
+        <div id="page-input" class="page active">
+
+          <!-- 月次サマリー（入力ページ上部） -->
+          <div id="input-summary">
+            <div class="summary-top-row">
+              <!-- 収支サマリー + グラフ（統合カード） -->
+              <div class="chart-box summary-combined-card">
+                <h4>収支サマリー</h4>
+                <div class="summary-combined-inner">
+                  <div class="summary-number-list">
+                    <div class="summary-number-item"><span class="sn-label">収入（夫）</span><span class="sn-value income" id="input-summary-income">¥0</span></div>
+                    <div class="summary-number-item">
+                      <button class="toggle-btn" id="toggle-wife" onclick="toggleBalanceOption('wife')">妻パート</button>
+                      <span class="sn-value projected" id="input-summary-wife">¥0</span>
+                    </div>
+                    <div class="summary-number-item">
+                      <button class="toggle-btn" id="toggle-extra-income" onclick="toggleBalanceOption('extraIncome')">その他収入（月均）</button>
+                      <span class="sn-value projected" id="input-summary-extra-income">¥0</span>
+                    </div>
+                    <div class="summary-number-item"><span class="sn-label">固定費</span><span class="sn-value fixed-exp" id="input-summary-fixed">¥0</span></div>
+                    <div class="summary-number-item"><span class="sn-label">変動費（実績）</span><span class="sn-value variable-exp" id="input-summary-variable">¥0</span></div>
+                    <div class="summary-number-item">
+                      <button class="toggle-btn" id="toggle-projected" onclick="toggleBalanceOption('projected')">変動費（予測）</button>
+                      <span class="sn-value projected" id="input-summary-projected">¥0</span>
+                    </div>
+                    <div class="summary-number-item">
+                      <button class="toggle-btn" id="toggle-special" onclick="toggleBalanceOption('special')">特別支出（月均）</button>
+                      <span class="sn-value projected" id="input-summary-special-avg">¥0</span>
+                    </div>
+                    <div class="summary-number-divider"></div>
+                    <div class="summary-number-item"><span class="sn-label">収支</span><span class="sn-value balance" id="input-summary-balance">¥0</span></div>
+                  </div>
+                  <div class="summary-chart-section">
+                    <div class="summary-chart-area">
+                      <canvas id="chart-input-summary"></canvas>
+                    </div>
+                    <div id="chart-legend-html" class="chart-legend-panel"></div>
+                  </div>
+                </div>
+              </div>
+              <!-- 変動費内訳 -->
+              <div class="chart-box" id="input-category-bar-wrap">
+                <h4>変動費 内訳</h4>
+                <div id="input-category-bar"></div>
+                <div class="daily-total-footer">
+                  <span class="daily-total-label">合計</span>
+                  <span id="daily-total" class="daily-total-amount">¥0</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="summary-card fixed-exp">
-            <h3>固定費合計</h3>
-            <p id="summary-fixed">¥0</p>
+
+          <!-- 日別支出 サブパネル -->
+          <div id="sub-daily" class="sub-panel active">
+            <div class="panel-toolbar">
+              <button id="open-add-modal" class="btn-primary">＋ 支出を追加</button>
+            </div>
+            <div id="daily-list"></div>
           </div>
-          <div class="summary-card variable-exp">
-            <h3>変動費合計</h3>
-            <p id="summary-variable">¥0</p>
-          </div>
-          <div class="summary-card balance">
-            <h3>収支</h3>
-            <p id="summary-balance">¥0</p>
+
+          <!-- 収入・固定費 サブパネル -->
+          <div id="sub-fixed" class="sub-panel">
+            <div class="fixed-grid">
+              <div class="fixed-section">
+                <h3>収入</h3>
+                <table class="input-table"><tbody id="income-table"></tbody></table>
+                <div class="fixed-section-total">合計：<strong id="income-total">¥0</strong></div>
+              </div>
+              <div class="fixed-section">
+                <h3>固定費</h3>
+                <table class="input-table"><tbody id="fixed-table"></tbody></table>
+                <div class="fixed-section-total">合計：<strong id="fixed-total">¥0</strong></div>
+              </div>
+              <div class="fixed-section">
+                <h3>特別支出
+                  <button class="special-add-btn" onclick="openSpecialModal()">＋ 追加</button>
+                </h3>
+                <div id="special-list"></div>
+                <div class="fixed-section-total">合計：<strong id="special-total">¥0</strong></div>
+              </div>
+            </div>
+            <button id="save-fixed" class="btn-primary">保存</button>
           </div>
         </div>
 
-        <h3 class="section-title">変動費 カテゴリ別</h3>
-        <table class="category-table">
-          <thead>
-            <tr><th>カテゴリ</th><th>金額</th></tr>
-          </thead>
-          <tbody id="category-breakdown"></tbody>
-        </table>
-      </section>
+        <!-- 収支管理ページ -->
+        <div id="page-report" class="page">
 
-      <!-- 収入・固定費タブ -->
-      <section id="tab-fixed" class="tab-content">
-        <div class="fixed-section">
-          <h3>収入</h3>
-          <table class="input-table">
-            <tbody id="income-table"></tbody>
-          </table>
+          <!-- 月次 サブパネル -->
+          <div id="sub-monthly" class="sub-panel active">
+            <div class="summary-grid">
+              <div class="summary-card income"><h3>収入</h3><p id="summary-income">¥0</p></div>
+              <div class="summary-card fixed-exp"><h3>固定費</h3><p id="summary-fixed">¥0</p></div>
+              <div class="summary-card variable-exp"><h3>変動費</h3><p id="summary-variable">¥0</p></div>
+              <div class="summary-card balance"><h3>収支</h3><p id="summary-balance">¥0</p></div>
+            </div>
+            <div class="chart-row">
+              <div class="chart-box">
+                <h4>カテゴリ別内訳</h4>
+                <canvas id="chart-donut"></canvas>
+              </div>
+              <div class="chart-box category-list-box">
+                <h4>カテゴリ別金額</h4>
+                <table class="category-table">
+                  <thead><tr><th>カテゴリ</th><th>金額</th></tr></thead>
+                  <tbody id="category-breakdown"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 年間 サブパネル -->
+          <div id="sub-annual" class="sub-panel">
+            <div class="chart-box full-width">
+              <h4>月別収支（<span id="annual-year"></span>年）</h4>
+              <canvas id="chart-annual"></canvas>
+            </div>
+            <h4 class="table-heading">月別一覧</h4>
+            <div class="annual-table-wrap">
+              <table class="annual-table">
+                <thead>
+                  <tr>
+                    <th>月</th><th>収入</th><th>固定費</th><th>変動費</th><th>収支</th>
+                  </tr>
+                </thead>
+                <tbody id="annual-table-body"></tbody>
+                <tfoot id="annual-table-foot"></tfoot>
+              </table>
+            </div>
+          </div>
         </div>
-        <div class="fixed-section">
-          <h3>社会保険・税金 / 貯蓄 / 自己投資</h3>
-          <table class="input-table">
-            <tbody id="deduction-table"></tbody>
-          </table>
-        </div>
-        <div class="fixed-section">
-          <h3>固定費</h3>
-          <table class="input-table">
-            <tbody id="fixed-table"></tbody>
-          </table>
-        </div>
-        <button id="save-fixed" class="btn-primary">保存</button>
-      </section>
-    </main>
+
+      </main>
+    </div>
   </div>
 
   <!-- 支出追加モーダル -->
   <div id="modal" class="modal hidden">
     <div class="modal-content">
       <h3 id="modal-title">支出を追加</h3>
-      <label>日付
-        <input type="date" id="input-date">
-      </label>
+      <label>日付<input type="date" id="input-date"></label>
       <label>カテゴリ
         <select id="input-category">
-          <option>食費</option>
-          <option>外食費</option>
-          <option>日用品</option>
-          <option>子供費</option>
-          <option>ひろき費</option>
-          <option>あさこ費</option>
-          <option>車費</option>
-          <option>医療費</option>
-          <option>その他</option>
+          <option>食費</option><option>外食費</option><option>日用品</option>
+          <option>子供費</option><option>ひろき費</option><option>あさこ費</option>
+          <option>車費</option><option>医療費</option><option>その他</option>
         </select>
       </label>
-      <label>金額（円）
-        <input type="number" id="input-amount" min="0" placeholder="0">
-      </label>
-      <label>メモ（店名など）
-        <input type="text" id="input-memo" placeholder="例：業務スーパー">
-      </label>
+      <label>金額（円）<input type="number" id="input-amount" min="0" placeholder="0"></label>
+      <label>メモ<input type="text" id="input-memo" placeholder="例：業務スーパー"></label>
       <div class="modal-actions">
         <button id="modal-save" class="btn-primary">保存</button>
         <button id="modal-cancel" class="btn-secondary">キャンセル</button>
       </div>
     </div>
   </div>
+
+  <!-- 特別収入モーダル -->
+  <div id="extra-income-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>その他収入を追加</h3>
+      <label>メモ<input type="text" id="extra-income-memo" placeholder="内容を入力"></label>
+      <label>金額（円）<input type="number" id="extra-income-amount" min="0" placeholder="0"></label>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="saveExtraIncomeModal()">保存</button>
+        <button class="btn-secondary" onclick="closeExtraIncomeModal()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 特別支出モーダル -->
+  <!-- 特別支出グループ追加モーダル -->
+  <div id="special-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>特別支出を追加</h3>
+      <label>名称<input type="text" id="special-name" placeholder="例：山梨旅行"></label>
+      <label>カテゴリ
+        <select id="special-category">
+          <option>旅行</option><option>税金</option><option>保険</option><option>その他</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="saveSpecialModal()">保存</button>
+        <button class="btn-secondary" onclick="closeSpecialModal()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 特別支出 費目追加モーダル -->
+  <div id="special-item-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="special-item-modal-title">費目を追加</h3>
+      <label id="special-item-sub-label">費目
+        <select id="special-item-subcategory">
+          <option>交通費</option><option>宿泊費</option><option>外食費</option>
+          <option>おみやげ</option><option>イベント</option><option>その他</option>
+        </select>
+      </label>
+      <label id="special-item-sub-text-label">費目<input type="text" id="special-item-subtext" placeholder="費目を入力"></label>
+      <label>メモ<input type="text" id="special-item-memo" placeholder="内容を入力"></label>
+      <label>金額（円）<input type="number" id="special-item-amount" min="0" placeholder="0"></label>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="saveSpecialItemModal()">保存</button>
+        <button class="btn-secondary" onclick="closeSpecialItemModal()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ボトムナビ（モバイル） -->
+  <nav id="bottom-nav">
+    <button class="bottom-nav-item active" data-page="input">
+      <span>📝</span><span>入力</span>
+    </button>
+    <button class="bottom-nav-item" data-page="report">
+      <span>📊</span><span>収支管理</span>
+    </button>
+  </nav>
 
   <script src="app.js"></script>
 </body>
