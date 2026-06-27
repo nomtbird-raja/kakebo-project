@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>家計簿</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>家計簿</h1>
+      <div class="month-nav">
+        <button id="prev-month">&#8249;</button>
+        <span id="current-month-label"></span>
+        <button id="next-month">&#8250;</button>
+      </div>
+      <nav class="tabs">
+        <button class="tab-btn active" data-tab="daily">日別入力</button>
+        <button class="tab-btn" data-tab="summary">月次サマリー</button>
+        <button class="tab-btn" data-tab="fixed">収入・固定費</button>
+      </nav>
+    </header>
+
+    <main>
+      <!-- 日別入力タブ -->
+      <section id="tab-daily" class="tab-content active">
+        <div class="daily-header">
+          <button id="open-add-modal" class="btn-primary">＋ 支出を追加</button>
+        </div>
+        <div class="daily-summary-bar">
+          <span>今月の変動費合計：<strong id="daily-total">¥0</strong></span>
+        </div>
+        <div id="daily-list"></div>
+      </section>
+
+      <!-- 月次サマリータブ -->
+      <section id="tab-summary" class="tab-content">
+        <div class="summary-grid">
+          <div class="summary-card income">
+            <h3>収入合計</h3>
+            <p id="summary-income">¥0</p>
+          </div>
+          <div class="summary-card fixed-exp">
+            <h3>固定費合計</h3>
+            <p id="summary-fixed">¥0</p>
+          </div>
+          <div class="summary-card variable-exp">
+            <h3>変動費合計</h3>
+            <p id="summary-variable">¥0</p>
+          </div>
+          <div class="summary-card balance">
+            <h3>収支</h3>
+            <p id="summary-balance">¥0</p>
+          </div>
+        </div>
+
+        <h3 class="section-title">変動費 カテゴリ別</h3>
+        <table class="category-table">
+          <thead>
+            <tr><th>カテゴリ</th><th>金額</th></tr>
+          </thead>
+          <tbody id="category-breakdown"></tbody>
+        </table>
+      </section>
+
+      <!-- 収入・固定費タブ -->
+      <section id="tab-fixed" class="tab-content">
+        <div class="fixed-section">
+          <h3>収入</h3>
+          <table class="input-table">
+            <tbody id="income-table"></tbody>
+          </table>
+        </div>
+        <div class="fixed-section">
+          <h3>社会保険・税金 / 貯蓄 / 自己投資</h3>
+          <table class="input-table">
+            <tbody id="deduction-table"></tbody>
+          </table>
+        </div>
+        <div class="fixed-section">
+          <h3>固定費</h3>
+          <table class="input-table">
+            <tbody id="fixed-table"></tbody>
+          </table>
+        </div>
+        <button id="save-fixed" class="btn-primary">保存</button>
+      </section>
+    </main>
+  </div>
+
+  <!-- 支出追加モーダル -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="modal-title">支出を追加</h3>
+      <label>日付
+        <input type="date" id="input-date">
+      </label>
+      <label>カテゴリ
+        <select id="input-category">
+          <option>食費</option>
+          <option>外食費</option>
+          <option>日用品</option>
+          <option>子供費</option>
+          <option>ひろき費</option>
+          <option>あさこ費</option>
+          <option>車費</option>
+          <option>医療費</option>
+          <option>その他</option>
+        </select>
+      </label>
+      <label>金額（円）
+        <input type="number" id="input-amount" min="0" placeholder="0">
+      </label>
+      <label>メモ（店名など）
+        <input type="text" id="input-memo" placeholder="例：業務スーパー">
+      </label>
+      <div class="modal-actions">
+        <button id="modal-save" class="btn-primary">保存</button>
+        <button id="modal-cancel" class="btn-secondary">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

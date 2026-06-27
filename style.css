@@ -1,0 +1,244 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Hiragino Sans', 'Meiryo', sans-serif;
+  background: #f5f6fa;
+  color: #333;
+  font-size: 14px;
+}
+
+#app { max-width: 800px; margin: 0 auto; padding: 0 0 60px; }
+
+header {
+  background: #4a7c59;
+  color: white;
+  padding: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+header h1 { font-size: 20px; margin-bottom: 10px; }
+
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.month-nav button {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  font-size: 22px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.month-nav button:hover { background: rgba(255,255,255,0.35); }
+
+#current-month-label { font-size: 18px; font-weight: bold; min-width: 100px; text-align: center; }
+
+.tabs { display: flex; gap: 4px; }
+
+.tab-btn {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.tab-btn.active { background: white; color: #4a7c59; font-weight: bold; }
+
+main { padding: 16px; }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* 日別入力 */
+.daily-header { margin-bottom: 10px; }
+
+.daily-summary-bar {
+  background: white;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.daily-summary-bar strong { font-size: 16px; color: #e05a2b; }
+
+.day-group { margin-bottom: 12px; }
+
+.day-group-header {
+  font-weight: bold;
+  color: #666;
+  font-size: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 6px;
+}
+
+.expense-item {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  gap: 10px;
+}
+
+.expense-category {
+  font-size: 11px;
+  background: #e8f0ea;
+  color: #4a7c59;
+  padding: 2px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.expense-memo { flex: 1; color: #555; }
+
+.expense-amount { font-weight: bold; color: #333; white-space: nowrap; }
+
+.expense-delete {
+  background: none;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+}
+
+.expense-delete:hover { color: #e05a2b; }
+
+/* サマリー */
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  background: white;
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  text-align: center;
+}
+
+.summary-card h3 { font-size: 12px; color: #888; margin-bottom: 6px; }
+.summary-card p { font-size: 20px; font-weight: bold; }
+
+.summary-card.income p { color: #2e7d32; }
+.summary-card.fixed-exp p { color: #1565c0; }
+.summary-card.variable-exp p { color: #e05a2b; }
+.summary-card.balance p { color: #333; }
+
+.section-title { font-size: 14px; color: #555; margin-bottom: 10px; }
+
+.category-table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.category-table th, .category-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #f0f0f0; }
+.category-table th { background: #f5f5f5; font-size: 12px; color: #888; }
+.category-table td:last-child { text-align: right; font-weight: bold; }
+
+/* 収入・固定費 */
+.fixed-section { background: white; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.fixed-section h3 { font-size: 14px; color: #4a7c59; margin-bottom: 12px; }
+
+.input-table { width: 100%; border-collapse: collapse; }
+.input-table td { padding: 6px 4px; }
+.input-table td:first-child { color: #555; width: 120px; }
+.input-table input[type="number"] {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 14px;
+  text-align: right;
+}
+.input-table input[type="number"]:focus { outline: none; border-color: #4a7c59; }
+
+/* ボタン */
+.btn-primary {
+  background: #4a7c59;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.btn-primary:hover { background: #3d6b4a; }
+
+.btn-secondary {
+  background: #eee;
+  color: #555;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* モーダル */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal.hidden { display: none; }
+
+.modal-content {
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modal-content h3 { font-size: 16px; color: #333; }
+
+.modal-content label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #888;
+}
+
+.modal-content input, .modal-content select {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.modal-content input:focus, .modal-content select:focus { outline: none; border-color: #4a7c59; }
+
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+#save-fixed { display: block; margin-top: 4px; }
+
+.empty-state { text-align: center; color: #aaa; padding: 40px 0; font-size: 14px; }
