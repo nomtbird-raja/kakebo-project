@@ -76,7 +76,7 @@ body {
 }
 .demo-btn:hover { opacity: 0.8; }
 .demo-load { background: var(--blue-light); color: var(--blue); }
-.demo-reset { background: #fee2e2; color: #dc2626; }
+.demo-reset { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
 
 .sidebar-nav {
   display: flex;
