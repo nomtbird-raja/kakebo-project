@@ -109,16 +109,18 @@ function changeMonth(delta) {
 function renderInputSummary() {
   const { income, fixedTotal, variable, specialTotal, balance, catTotals } = calcMonth(currentYear, currentMonth);
 
-  // 収入（夫・ボーナス・児童手当を基本収入として合算）
+  // 収入（夫のみ）
   const fixed = loadFixed();
-  const husbandIncome = (fixed['income_夫'] || 0) + (fixed['income_ボーナス'] || 0) + (fixed['income_児童手当'] || 0);
+  const husbandIncome = fixed['income_夫'] || 0;
   const wifeIncome = fixed['income_妻パート'] || 0;
   document.getElementById('input-summary-income').textContent = fmt(husbandIncome);
   document.getElementById('input-summary-wife').textContent = fmt(wifeIncome);
 
-  // その他収入月均（当月まで累計÷月数）
+  // その他収入月均（ボーナス・児童手当・extraIncomeを合算して当月まで累計÷月数）
   let extraIncomeCumulative = 0;
   for (let m = 1; m <= currentMonth; m++) {
+    const f = loadFixed(currentYear, m);
+    extraIncomeCumulative += (f['income_ボーナス'] || 0) + (f['income_児童手当'] || 0);
     extraIncomeCumulative += loadExtraIncome(currentYear, m).reduce((s, e) => s + e.amount, 0);
   }
   const extraIncomeAvg = Math.round(extraIncomeCumulative / currentMonth);
