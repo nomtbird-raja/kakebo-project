@@ -472,6 +472,48 @@ body {
 .day-detail-item .expense-amount { font-weight: 700; color: var(--text); }
 .day-detail-item .expense-delete { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; padding: 0 2px; }
 .day-detail-item .expense-delete:hover { color: var(--negative); }
+
+.day-item-menu { position: relative; }
+.day-item-menu-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+}
+.day-item-menu-btn:hover { background: var(--border); }
+.day-item-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  min-width: 96px;
+  overflow: hidden;
+}
+.day-item-menu-dropdown.hidden { display: none; }
+.day-item-menu-dropdown button {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.day-item-menu-dropdown button:hover { background: var(--bg); }
+.day-item-menu-dropdown button.danger { color: var(--negative); }
 .expense-items-btn {
   font-size: 11px;
   color: var(--blue);

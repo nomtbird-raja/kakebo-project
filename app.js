@@ -428,8 +428,14 @@ function renderDayDetail(dateStr) {
           <span class="expense-category">${e.category}</span>
           <span class="expense-memo">${e.memo || ''}</span>
           <span class="expense-amount">${fmt(e.amount)}</span>
-          <button class="expense-items-btn" onclick="openExpenseItemsModal('${e.id}')">${(e.items && e.items.length) ? '内訳編集' : '＋内訳'}</button>
-          <button class="expense-delete" onclick="deleteExpense('${e.id}')">×</button>
+          <div class="day-item-menu">
+            <button class="day-item-menu-btn" onclick="toggleDayItemMenu(event, '${e.id}')">⋯</button>
+            <div class="day-item-menu-dropdown hidden" id="day-item-menu-${e.id}">
+              <button onclick="editExpense('${e.id}')">編集</button>
+              <button onclick="openExpenseItemsModal('${e.id}')">${(e.items && e.items.length) ? '内訳編集' : '内訳追加'}</button>
+              <button class="danger" onclick="deleteExpense('${e.id}')">削除</button>
+            </div>
+          </div>
         </div>
         ${(e.items && e.items.length) ? `<div class="expense-items-detail">${
           e.items.slice(0, 4).map(i => `<span>${i.name} ${fmt(i.amount)}</span>`).join('')
@@ -437,12 +443,27 @@ function renderDayDetail(dateStr) {
     : '<p style="color:#bbb;text-align:center;padding:16px">支出なし</p>';
 }
 
+// 日別詳細の各行「⋯」メニュー（編集・内訳・削除をまとめる）
+function toggleDayItemMenu(event, id) {
+  event.stopPropagation();
+  const menu = document.getElementById('day-item-menu-' + id);
+  const isOpen = !menu.classList.contains('hidden');
+  document.querySelectorAll('.day-item-menu-dropdown').forEach(m => m.classList.add('hidden'));
+  if (!isOpen) menu.classList.remove('hidden');
+}
+document.addEventListener('click', () => {
+  document.querySelectorAll('.day-item-menu-dropdown').forEach(m => m.classList.add('hidden'));
+});
+
 // ===== モーダル =====
 let modalItems = [];
+
+let modalOpenedFromDayDetail = false;
 
 function openModal(dateStr = null) {
   editingId = null;
   modalItems = [];
+  modalOpenedFromDayDetail = false;
   const now = new Date();
   const defaultDate = dateStr || `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   document.getElementById('modal-title').textContent = '支出を追加';
@@ -457,7 +478,43 @@ function openModal(dateStr = null) {
   document.getElementById('input-amount').focus();
 }
 
-function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+function closeModal() {
+  document.getElementById('modal').classList.add('hidden');
+  editingId = null;
+  if (modalOpenedFromDayDetail) {
+    const dayModal = document.getElementById('day-detail-modal');
+    if (dayModal) dayModal.classList.remove('hidden');
+    modalOpenedFromDayDetail = false;
+  }
+}
+
+function editExpense(id) {
+  const exp = findExpenseById(id);
+  if (!exp) return;
+  editingId = id;
+  modalItems = (exp.items || []).filter(i => !i.auto).map(i => ({ name: i.name, amount: i.amount }));
+  document.getElementById('modal-title').textContent = '支出を編集';
+  document.getElementById('input-date').value = exp.date;
+  document.getElementById('input-category').value = exp.category;
+  document.getElementById('input-amount').value = exp.amount;
+  document.getElementById('input-memo').value = exp.memo || '';
+  if (modalItems.length > 0) {
+    document.getElementById('modal-items-section').classList.remove('hidden');
+    document.getElementById('modal-items-toggle').classList.add('hidden');
+  } else {
+    document.getElementById('modal-items-section').classList.add('hidden');
+    document.getElementById('modal-items-toggle').classList.remove('hidden');
+  }
+  renderModalItems();
+  // 日別詳細モーダルは後からDOMに追加され重なり順が上になるため、開いたままだと編集モーダルが裏に隠れてしまう
+  const dayModal = document.getElementById('day-detail-modal');
+  if (dayModal && !dayModal.classList.contains('hidden')) {
+    dayModal.classList.add('hidden');
+    modalOpenedFromDayDetail = true;
+  }
+  document.getElementById('modal').classList.remove('hidden');
+  document.getElementById('input-amount').focus();
+}
 
 // ===== 支出の内訳（品目単位） =====
 function toggleModalItems() {
@@ -576,12 +633,25 @@ function saveModal() {
     .filter(it => it.name.trim() && it.amount > 0)
     .map(it => ({ id: generateId(), name: it.name.trim(), amount: it.amount }));
   const now = new Date().toISOString();
-  const expense = { id: generateId(), date, category, amount, memo, createdAt: now, updatedAt: now };
-  if (items.length > 0) expense.items = reconcileItems(items, amount);
-  saveExpense(expense);
+
+  if (editingId) {
+    const exp = findExpenseById(editingId);
+    if (!exp) return;
+    exp.date = date; exp.category = category; exp.amount = amount; exp.memo = memo;
+    if (items.length > 0) exp.items = reconcileItems(items, amount); else delete exp.items;
+    exp.updatedAt = now;
+    saveExpense(exp);
+  } else {
+    const expense = { id: generateId(), date, category, amount, memo, createdAt: now, updatedAt: now };
+    if (items.length > 0) expense.items = reconcileItems(items, amount);
+    saveExpense(expense);
+  }
+
   closeModal();
   renderDaily();
   renderInputSummary();
+  const dayModal = document.getElementById('day-detail-modal');
+  if (dayModal && !dayModal.classList.contains('hidden')) renderDayDetail(dayModal.dataset.date);
 }
 
 // カンマ付き数値入力のHTMLを生成
