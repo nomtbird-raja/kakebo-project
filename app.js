@@ -1,5 +1,5 @@
 const VARIABLE_CATEGORIES = ['食費','外食費','日用品','子供費','ひろき費','あさこ費','車費','医療費','その他'];
-const FIXED_INCOME_ITEMS = ['夫', '妻パート', 'ボーナス', '児童手当'];
+const FIXED_INCOME_ITEMS = ['夫', '妻', 'ボーナス', 'その他'];
 const FIXED_ITEMS = ['住居費','電気','ガス','水道','教育費','通信費','保険'];
 const SPECIAL_CATEGORIES = ['旅行','税金','保険','その他'];
 const TRAVEL_SUBCATEGORIES = ['交通費','宿泊費','外食費','おみやげ','イベント','その他'];
@@ -16,15 +16,40 @@ function toggleBalanceOption(key) {
   renderInputSummary();
 }
 
+// 複数端末からの同時登録でもIDが衝突しないようにするため、連番でなくUUIDを使う
+function generateId() {
+  return (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+}
+
 // ===== ストレージ =====
 function key(year, month, type) {
   return `kakebo_${year}_${String(month).padStart(2,'0')}_${type}`;
 }
-function loadExpenses(y = currentYear, m = currentMonth) {
-  return JSON.parse(localStorage.getItem(key(y, m, 'expenses')) || '[]');
+// 支出はkey()で月ごとに配列を丸ごと保存/上書きすると、複数端末からの同時書き込みで
+// 片方の変更が消えてしまう。1件＝1レコードで読み書きできるよう、IDをキーにしたフラットな
+// マップで保持する（将来Firestoreに繋ぐ際も1レコード＝1ドキュメントにそのまま対応できる）。
+function loadAllExpenses() {
+  return JSON.parse(localStorage.getItem('kakebo_expenses') || '{}');
 }
-function saveExpenses(data) {
-  localStorage.setItem(key(currentYear, currentMonth, 'expenses'), JSON.stringify(data));
+function saveAllExpenses(map) {
+  localStorage.setItem('kakebo_expenses', JSON.stringify(map));
+}
+function loadExpenses(y = currentYear, m = currentMonth) {
+  const prefix = `${y}-${String(m).padStart(2,'0')}-`;
+  return Object.values(loadAllExpenses()).filter(e => e.date.startsWith(prefix));
+}
+function findExpenseById(id) {
+  return loadAllExpenses()[id];
+}
+function saveExpense(expense) {
+  const all = loadAllExpenses();
+  all[expense.id] = expense;
+  saveAllExpenses(all);
+}
+function deleteExpenseById(id) {
+  const all = loadAllExpenses();
+  delete all[id];
+  saveAllExpenses(all);
 }
 function loadFixed(y = currentYear, m = currentMonth) {
   return JSON.parse(localStorage.getItem(key(y, m, 'fixed')) || '{}');
@@ -90,6 +115,9 @@ function switchSub(sub) {
 // ===== 月ナビ =====
 function updateMonthLabel() {
   document.getElementById('current-month-label').textContent = `${currentYear}年 ${currentMonth}月`;
+  // 同期レイヤー（sync.js）がどの月への保存かを知るために参照する
+  window.currentYear = currentYear;
+  window.currentMonth = currentMonth;
 }
 
 function changeMonth(delta) {
@@ -112,15 +140,15 @@ function renderInputSummary() {
   // 収入（夫のみ）
   const fixed = loadFixed();
   const husbandIncome = fixed['income_夫'] || 0;
-  const wifeIncome = fixed['income_妻パート'] || 0;
+  const wifeIncome = fixed['income_妻'] || 0;
   document.getElementById('input-summary-income').textContent = fmt(husbandIncome);
   document.getElementById('input-summary-wife').textContent = fmt(wifeIncome);
 
-  // その他収入月均（ボーナス・児童手当・extraIncomeを合算して当月まで累計÷月数）
+  // その他収入月均（ボーナス・その他・extraIncomeを合算して当月まで累計÷月数）
   let extraIncomeCumulative = 0;
   for (let m = 1; m <= currentMonth; m++) {
     const f = loadFixed(currentYear, m);
-    extraIncomeCumulative += (f['income_ボーナス'] || 0) + (f['income_児童手当'] || 0);
+    extraIncomeCumulative += (f['income_ボーナス'] || 0) + (f['income_その他'] || 0);
     extraIncomeCumulative += loadExtraIncome(currentYear, m).reduce((s, e) => s + e.amount, 0);
   }
   const extraIncomeAvg = Math.round(extraIncomeCumulative / currentMonth);
@@ -186,7 +214,7 @@ function renderInputSummary() {
       labels: ['収入', '費用'],
       datasets: [
         { ...barBase, label: '夫',           data: [husbandIncome, null],                             backgroundColor: '#2563eb' },
-        { ...barBase, label: '妻パート',     data: [balanceOptions.wife ? wifeIncome : 0, null],      backgroundColor: '#60a5fa' },
+        { ...barBase, label: '妻',     data: [balanceOptions.wife ? wifeIncome : 0, null],      backgroundColor: '#60a5fa' },
         { ...barBase, label: 'その他収入',   data: [balanceOptions.extraIncome ? extraIncomeAvg : 0, null], backgroundColor: '#bfdbfe' },
         { ...barBase, label: '固定費',       data: [null, fixedTotal],                                backgroundColor: '#94a3b8' },
         { ...barBase, label: '変動費（実績）', data: [null, variable],                                backgroundColor: '#475569' },
@@ -263,7 +291,7 @@ function renderInputSummary() {
   if (legendEl) {
     const incomeLegend = [
       { label: '夫', color: '#2563eb' },
-      { label: '妻パート', color: '#60a5fa' },
+      { label: '妻', color: '#60a5fa' },
       { label: 'その他収入', color: '#bfdbfe' },
     ];
     const expenseLegend = [
@@ -343,7 +371,7 @@ function renderDaily() {
 }
 
 function deleteExpense(id) {
-  saveExpenses(loadExpenses().filter(e => e.id !== id));
+  deleteExpenseById(id);
   renderDaily();
   renderInputSummary();
   // 詳細モーダルが開いていれば再描画
@@ -361,7 +389,7 @@ function openDayDetail(dateStr) {
     modal = document.createElement('div');
     modal.id = 'day-detail-modal';
     modal.className = 'modal';
-    modal.innerHTML = `<div class="modal-content">
+    modal.innerHTML = `<div class="modal-content day-detail-modal-content">
       <h3 id="day-detail-title"></h3>
       <div id="day-detail-list" class="day-detail-list"></div>
       <div class="modal-actions">
@@ -395,14 +423,21 @@ function renderDayDetail(dateStr) {
           <span class="expense-category">${e.category}</span>
           <span class="expense-memo">${e.memo || ''}</span>
           <span class="expense-amount">${fmt(e.amount)}</span>
-          <button class="expense-delete" onclick="deleteExpense(${e.id})">×</button>
-        </div>`).join('')
+          <button class="expense-items-btn" onclick="openExpenseItemsModal('${e.id}')">${(e.items && e.items.length) ? '内訳編集' : '＋内訳'}</button>
+          <button class="expense-delete" onclick="deleteExpense('${e.id}')">×</button>
+        </div>
+        ${(e.items && e.items.length) ? `<div class="expense-items-detail">${
+          e.items.slice(0, 4).map(i => `<span>${i.name} ${fmt(i.amount)}</span>`).join('')
+        }${e.items.length > 4 ? `<span class="expense-items-more">他${e.items.length - 4}件</span>` : ''}</div>` : ''}`).join('')
     : '<p style="color:#bbb;text-align:center;padding:16px">支出なし</p>';
 }
 
 // ===== モーダル =====
+let modalItems = [];
+
 function openModal(dateStr = null) {
   editingId = null;
+  modalItems = [];
   const now = new Date();
   const defaultDate = dateStr || `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   document.getElementById('modal-title').textContent = '支出を追加';
@@ -410,11 +445,121 @@ function openModal(dateStr = null) {
   document.getElementById('input-category').value = '食費';
   document.getElementById('input-amount').value = '';
   document.getElementById('input-memo').value = '';
+  document.getElementById('modal-items-section').classList.add('hidden');
+  document.getElementById('modal-items-toggle').classList.remove('hidden');
+  renderModalItems();
   document.getElementById('modal').classList.remove('hidden');
   document.getElementById('input-amount').focus();
 }
 
 function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+// ===== 支出の内訳（品目単位） =====
+function toggleModalItems() {
+  document.getElementById('modal-items-section').classList.remove('hidden');
+  document.getElementById('modal-items-toggle').classList.add('hidden');
+  if (modalItems.length === 0) addModalItemRow();
+}
+
+function addModalItemRow() {
+  modalItems.push({ name: '', amount: 0 });
+  renderModalItems();
+}
+
+function removeModalItemRow(index) {
+  modalItems.splice(index, 1);
+  renderModalItems();
+  if (modalItems.length === 0) {
+    document.getElementById('modal-items-section').classList.add('hidden');
+    document.getElementById('modal-items-toggle').classList.remove('hidden');
+  }
+}
+
+function updateModalItem(index, field, value) {
+  modalItems[index][field] = field === 'amount' ? (parseInt(value, 10) || 0) : value;
+}
+
+function renderModalItems() {
+  const list = document.getElementById('modal-items-list');
+  list.innerHTML = modalItems.map((it, i) => `
+    <div class="modal-item-row">
+      <input type="text" placeholder="品目（例：ラーメン）" value="${it.name || ''}" oninput="updateModalItem(${i}, 'name', this.value)">
+      <input type="number" placeholder="金額" min="0" value="${it.amount || ''}" oninput="updateModalItem(${i}, 'amount', this.value)">
+      <button type="button" class="expense-delete" onclick="removeModalItemRow(${i})">×</button>
+    </div>`).join('');
+}
+
+// 内訳の合計が本来の金額と合わない場合、差分を「その他」として自動補完する
+function reconcileItems(items, totalAmount) {
+  const sum = items.reduce((s, it) => s + it.amount, 0);
+  const diff = totalAmount - sum;
+  return diff > 0 ? [...items, { id: generateId(), name: 'その他', amount: diff, auto: true }] : items;
+}
+
+// ===== 登録済み支出の内訳編集 =====
+let editingItemsExpenseId = null;
+let editingItemsArr = [];
+
+function openExpenseItemsModal(id) {
+  editingItemsExpenseId = id;
+  const exp = findExpenseById(id);
+  editingItemsArr = (exp && exp.items) ? exp.items.filter(i => !i.auto).map(i => ({ name: i.name, amount: i.amount })) : [];
+  if (editingItemsArr.length === 0) editingItemsArr.push({ name: '', amount: 0 });
+  renderExpenseItemsModalList();
+  // 日別詳細モーダルは後からDOMに追加されるため重なり順が上になり、開いたままだと内訳モーダルが裏に隠れてしまう
+  const dayModal = document.getElementById('day-detail-modal');
+  if (dayModal) dayModal.classList.add('hidden');
+  document.getElementById('expense-items-modal').classList.remove('hidden');
+}
+
+function closeExpenseItemsModal() {
+  document.getElementById('expense-items-modal').classList.add('hidden');
+  editingItemsExpenseId = null;
+  const dayModal = document.getElementById('day-detail-modal');
+  if (dayModal && dayModal.dataset.date) dayModal.classList.remove('hidden');
+}
+
+function addExpenseItemsModalRow() {
+  editingItemsArr.push({ name: '', amount: 0 });
+  renderExpenseItemsModalList();
+}
+
+function removeExpenseItemsModalRow(index) {
+  editingItemsArr.splice(index, 1);
+  renderExpenseItemsModalList();
+}
+
+function updateExpenseItemsModalItem(index, field, value) {
+  editingItemsArr[index][field] = field === 'amount' ? (parseInt(value, 10) || 0) : value;
+}
+
+function renderExpenseItemsModalList() {
+  const list = document.getElementById('expense-items-modal-list');
+  list.innerHTML = editingItemsArr.map((it, i) => `
+    <div class="modal-item-row">
+      <input type="text" placeholder="品目（例：ラーメン）" value="${it.name || ''}" oninput="updateExpenseItemsModalItem(${i}, 'name', this.value)">
+      <input type="number" placeholder="金額" min="0" value="${it.amount || ''}" oninput="updateExpenseItemsModalItem(${i}, 'amount', this.value)">
+      <button type="button" class="expense-delete" onclick="removeExpenseItemsModalRow(${i})">×</button>
+    </div>`).join('');
+}
+
+function saveExpenseItemsModal() {
+  const items = editingItemsArr
+    .filter(it => it.name.trim() && it.amount > 0)
+    .map(it => ({ id: generateId(), name: it.name.trim(), amount: it.amount }));
+  const exp = findExpenseById(editingItemsExpenseId);
+  if (exp) {
+    const finalItems = items.length > 0 ? reconcileItems(items, exp.amount) : items;
+    if (finalItems.length > 0) exp.items = finalItems; else delete exp.items;
+    exp.updatedAt = new Date().toISOString();
+    saveExpense(exp);
+  }
+  closeExpenseItemsModal();
+  renderDaily();
+  renderInputSummary();
+  const modal = document.getElementById('day-detail-modal');
+  if (modal && !modal.classList.contains('hidden')) renderDayDetail(modal.dataset.date);
+}
 
 function saveModal() {
   const date = document.getElementById('input-date').value;
@@ -422,9 +567,13 @@ function saveModal() {
   const amount = parseInt(document.getElementById('input-amount').value, 10);
   const memo = document.getElementById('input-memo').value.trim();
   if (!date || isNaN(amount) || amount <= 0) return;
-  const expenses = loadExpenses();
-  expenses.push({ id: Date.now(), date, category, amount, memo });
-  saveExpenses(expenses);
+  const items = modalItems
+    .filter(it => it.name.trim() && it.amount > 0)
+    .map(it => ({ id: generateId(), name: it.name.trim(), amount: it.amount }));
+  const now = new Date().toISOString();
+  const expense = { id: generateId(), date, category, amount, memo, createdAt: now, updatedAt: now };
+  if (items.length > 0) expense.items = reconcileItems(items, amount);
+  saveExpense(expense);
   closeModal();
   renderDaily();
   renderInputSummary();
@@ -453,7 +602,7 @@ function renderFixedTab() {
       <tr>
         <td>その他${e.memo ? `<span style="color:#94a3b8;font-size:11px;margin-left:6px">${e.memo}</span>` : ''}</td>
         <td style="text-align:right;font-weight:600;color:var(--blue)">${fmt(e.amount)}</td>
-        <td><button class="expense-delete" onclick="deleteExtraIncome(${e.id})">×</button></td>
+        <td><button class="expense-delete" onclick="deleteExtraIncome('${e.id}')">×</button></td>
       </tr>`).join('') +
     `<tr><td colspan="3" style="padding-top:6px"><button class="special-add-btn" onclick="openExtraIncomeModal()">＋ その他追加</button></td></tr>`;
 
@@ -473,7 +622,7 @@ function toggleWife() {
   const isActive = btn.classList.toggle('active');
   row.style.display = isActive ? '' : 'none';
   if (!isActive) {
-    delete fixed['income_妻パート'];
+    delete fixed['income_妻'];
     saveFixed(fixed);
     renderInputSummary();
   }
@@ -527,7 +676,7 @@ function saveExtraIncomeModal() {
   const amount = parseInt(document.getElementById('extra-income-amount').value, 10);
   if (isNaN(amount) || amount <= 0) return;
   const items = loadExtraIncome();
-  items.push({ id: Date.now(), memo, amount });
+  items.push({ id: generateId(), memo, amount, createdAt: new Date().toISOString() });
   saveExtraIncome(items);
   closeExtraIncomeModal();
   renderExtraIncomeList();
@@ -563,7 +712,7 @@ function renderSpecialList() {
       <div class="special-line-item">
         <span class="special-line-label">${i.subCategory || ''}${i.memo ? `<span class="special-line-memo"> / ${i.memo}</span>` : ''}</span>
         <span class="special-line-amount">${fmt(i.amount)}</span>
-        <button class="expense-delete" onclick="deleteSpecialItem(${g.id}, ${i.id})">×</button>
+        <button class="expense-delete" onclick="deleteSpecialItem('${g.id}', '${i.id}')">×</button>
       </div>`).join('');
     return `
       <div class="special-group">
@@ -572,7 +721,7 @@ function renderSpecialList() {
           <span class="special-group-name">${g.name}</span>
           <span class="special-group-subtotal">${fmt(subtotal)}</span>
           <button class="special-item-add" data-gid="${g.id}" data-gcat="${g.category}" data-gname="${g.name.replace(/"/g,'&quot;')}" onclick="openSpecialItemModalById(this)">＋費目</button>
-          <button class="expense-delete" onclick="deleteSpecial(${g.id})">×</button>
+          <button class="expense-delete" onclick="deleteSpecial('${g.id}')">×</button>
         </div>
         ${itemsHtml}
       </div>`;
@@ -595,7 +744,7 @@ function saveSpecialModal() {
   const category = document.getElementById('special-category').value;
   if (!name) return;
   const groups = loadSpecial();
-  groups.push({ id: Date.now(), name, category, items: [] });
+  groups.push({ id: generateId(), name, category, items: [], createdAt: new Date().toISOString() });
   saveSpecial(groups);
   closeSpecialModal();
   renderSpecialList();
@@ -608,7 +757,7 @@ function deleteSpecial(id) {
 }
 
 function openSpecialItemModalById(btn) {
-  openSpecialItemModal(Number(btn.dataset.gid), btn.dataset.gcat, btn.dataset.gname);
+  openSpecialItemModal(btn.dataset.gid, btn.dataset.gcat, btn.dataset.gname);
 }
 
 function openSpecialItemModal(groupId, category, groupName) {
@@ -642,7 +791,7 @@ function saveSpecialItemModal() {
   const group = groups.find(g => g.id === editingSpecialGroupId);
   if (!group) return;
   group.items = group.items || [];
-  group.items.push({ id: Date.now(), subCategory, memo, amount });
+  group.items.push({ id: generateId(), subCategory, memo, amount, createdAt: new Date().toISOString() });
   saveSpecial(groups);
   closeSpecialItemModal();
   renderSpecialList();
@@ -802,6 +951,7 @@ function init() {
   document.getElementById('special-item-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeSpecialItemModal(); });
   document.getElementById('special-item-amount').addEventListener('keydown', e => { if (e.key === 'Enter') saveSpecialItemModal(); });
   document.getElementById('extra-income-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeExtraIncomeModal(); });
+  document.getElementById('expense-items-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeExpenseItemsModal(); });
   document.getElementById('extra-income-amount').addEventListener('keydown', e => { if (e.key === 'Enter') saveExtraIncomeModal(); });
   document.getElementById('input-amount').addEventListener('keydown', e => { if (e.key === 'Enter') saveModal(); });
 
@@ -812,7 +962,17 @@ function init() {
   switchPage('input');
 }
 
-init();
+// sync.jsが遠隔（他端末）からの更新を受け取った際に、今表示中の画面を再描画するためのフック
+window.refreshCurrentView = () => switchSub(currentSub[currentPage]);
+
+// 起動タイミングはsync.js（Firestoreからの初期データ取得後）が制御する。
+// sync.jsが読み込まれていない/Firebase未設定の場合はここで即時起動する。
+window.__appInit = init;
+if (window.startApp) {
+  window.startApp();
+} else {
+  init();
+}
 
 // ===== デモ / リセット =====
 function loadDemoData() {
@@ -821,13 +981,13 @@ function loadDemoData() {
   Object.keys(localStorage).filter(k => k.startsWith('kakebo_')).forEach(k => localStorage.removeItem(k));
 
   const months = [
-    { y: 2026, m: 1,  income: { 夫: 320000, 妻パート: 80000, 児童手当: 20000 }, fixed: { 住居費: 95000, 電気: 8500, ガス: 4200, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
-    { y: 2026, m: 2,  income: { 夫: 320000, 妻パート: 80000, 児童手当: 20000 }, fixed: { 住居費: 95000, 電気: 9200, ガス: 5100, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
-    { y: 2026, m: 3,  income: { 夫: 320000, 妻パート: 80000, 児童手当: 20000 }, fixed: { 住居費: 95000, 電気: 7800, ガス: 3800, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
-    { y: 2026, m: 4,  income: { 夫: 320000, 妻パート: 80000, 児童手当: 20000 }, fixed: { 住居費: 95000, 電気: 6500, ガス: 2900, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
-    { y: 2026, m: 5,  income: { 夫: 320000, 妻パート: 80000, 児童手当: 20000 }, fixed: { 住居費: 95000, 電気: 6200, ガス: 2500, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
-    { y: 2026, m: 6,  income: { 夫: 320000, 妻パート: 80000, 児童手当: 20000, ボーナス: 200000 }, fixed: { 住居費: 95000, 電気: 7100, ガス: 2200, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
-    { y: 2026, m: 7,  income: { 夫: 320000, 妻パート: 80000, 児童手当: 20000 }, fixed: { 住居費: 95000, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
+    { y: 2026, m: 1,  income: { 夫: 320000, 妻: 80000, その他: 20000 }, fixed: { 住居費: 95000, 電気: 8500, ガス: 4200, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
+    { y: 2026, m: 2,  income: { 夫: 320000, 妻: 80000, その他: 20000 }, fixed: { 住居費: 95000, 電気: 9200, ガス: 5100, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
+    { y: 2026, m: 3,  income: { 夫: 320000, 妻: 80000, その他: 20000 }, fixed: { 住居費: 95000, 電気: 7800, ガス: 3800, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
+    { y: 2026, m: 4,  income: { 夫: 320000, 妻: 80000, その他: 20000 }, fixed: { 住居費: 95000, 電気: 6500, ガス: 2900, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
+    { y: 2026, m: 5,  income: { 夫: 320000, 妻: 80000, その他: 20000 }, fixed: { 住居費: 95000, 電気: 6200, ガス: 2500, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
+    { y: 2026, m: 6,  income: { 夫: 320000, 妻: 80000, その他: 20000, ボーナス: 200000 }, fixed: { 住居費: 95000, 電気: 7100, ガス: 2200, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
+    { y: 2026, m: 7,  income: { 夫: 320000, 妻: 80000, その他: 20000 }, fixed: { 住居費: 95000, 水道: 3000, 教育費: 15000, 通信費: 8000, 保険: 12000 } },
   ];
 
   const expenseTemplates = [
@@ -841,6 +1001,7 @@ function loadDemoData() {
     { category: 'その他', items: [['楽天',18629],['Amazon',4500]] },
   ];
 
+  const allExpenses = loadAllExpenses();
   months.forEach(({ y, m, income, fixed }) => {
     const fixedData = {};
     Object.entries(income).forEach(([k, v]) => { fixedData[`income_${k}`] = v; });
@@ -848,21 +1009,22 @@ function loadDemoData() {
     localStorage.setItem(`kakebo_${y}_${String(m).padStart(2,'0')}_fixed`, JSON.stringify(fixedData));
 
     const daysInMonth = m === 7 ? 14 : new Date(y, m, 0).getDate();
-    const expenses = [];
+    const now = new Date().toISOString();
     expenseTemplates.forEach(tmpl => {
       tmpl.items.forEach(([memo, baseAmt]) => {
         const day = Math.floor(Math.random() * daysInMonth) + 1;
         const date = `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
         const amount = baseAmt + Math.floor((Math.random() - 0.5) * baseAmt * 0.2);
-        expenses.push({ id: Date.now() + Math.random(), date, category: tmpl.category, amount, memo });
+        const id = generateId();
+        allExpenses[id] = { id, date, category: tmpl.category, amount, memo, createdAt: now, updatedAt: now };
       });
     });
-    localStorage.setItem(`kakebo_${y}_${String(m).padStart(2,'0')}_expenses`, JSON.stringify(expenses));
   });
+  saveAllExpenses(allExpenses);
 
-  localStorage.setItem('kakebo_2026_06_special', JSON.stringify([{id:1000001,name:'山梨旅行',category:'旅行',items:[{id:1000101,subCategory:'交通費',memo:'高速代',amount:8000},{id:1000102,subCategory:'宿泊費',memo:'ホテル',amount:25000},{id:1000103,subCategory:'外食費',memo:'夕食',amount:12000},{id:1000104,subCategory:'おみやげ',memo:'',amount:5000}]}]));
-  localStorage.setItem('kakebo_2026_04_special', JSON.stringify([{id:1000002,name:'自動車税',category:'税金',items:[{id:1000201,subCategory:'自動車税',memo:'',amount:39500}]}]));
-  localStorage.setItem('kakebo_2026_05_extra_income', JSON.stringify([{id:2000001,memo:'フリマ売上',amount:8500}]));
+  localStorage.setItem('kakebo_2026_06_special', JSON.stringify([{id:'1000001',name:'山梨旅行',category:'旅行',items:[{id:'1000101',subCategory:'交通費',memo:'高速代',amount:8000},{id:'1000102',subCategory:'宿泊費',memo:'ホテル',amount:25000},{id:'1000103',subCategory:'外食費',memo:'夕食',amount:12000},{id:'1000104',subCategory:'おみやげ',memo:'',amount:5000}]}]));
+  localStorage.setItem('kakebo_2026_04_special', JSON.stringify([{id:'1000002',name:'自動車税',category:'税金',items:[{id:'1000201',subCategory:'自動車税',memo:'',amount:39500}]}]));
+  localStorage.setItem('kakebo_2026_05_extra_income', JSON.stringify([{id:'2000001',memo:'フリマ売上',amount:8500}]));
 
   location.reload();
 }

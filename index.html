@@ -9,6 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <div id="layout">
@@ -37,6 +40,7 @@
       <div class="sidebar-demo">
         <button class="demo-btn demo-load" onclick="loadDemoData()">デモを読み込む</button>
         <button class="demo-btn demo-reset" onclick="resetAllData()">データをリセット</button>
+        <button class="demo-btn demo-reset" id="switch-household-btn" onclick="switchHousehold()">合言葉を変更</button>
       </div>
     </aside>
 
@@ -75,7 +79,7 @@
                   <div class="summary-number-list">
                     <div class="summary-number-item"><span class="sn-label">収入（夫）</span><span class="sn-value income" id="input-summary-income">¥0</span></div>
                     <div class="summary-number-item">
-                      <button class="toggle-btn" id="toggle-wife" onclick="toggleBalanceOption('wife')">妻パート</button>
+                      <button class="toggle-btn" id="toggle-wife" onclick="toggleBalanceOption('wife')">妻</button>
                       <span class="sn-value projected" id="input-summary-wife">¥0</span>
                     </div>
                     <div class="summary-number-item">
@@ -199,6 +203,21 @@
     </div>
   </div>
 
+  <!-- 合言葉（PIN）ゲート -->
+  <div id="pin-gate" class="modal hidden">
+    <div class="modal-content">
+      <h3>合言葉を入力</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 0">
+        家族で共有する合言葉を入力してください。初めて入力する合言葉がこの家計簿の共有キーになるので、家族全員で同じものを使ってください。
+      </p>
+      <label>合言葉（数字4桁）<input type="password" id="pin-input" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="例：1234"></label>
+      <p id="pin-error" class="pin-error hidden">半角数字4桁で入力してください</p>
+      <div class="modal-actions">
+        <button id="pin-submit" class="btn-primary">はじめる</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 支出追加モーダル -->
   <div id="modal" class="modal hidden">
     <div class="modal-content">
@@ -213,6 +232,13 @@
       </label>
       <label>金額（円）<input type="number" id="input-amount" min="0" placeholder="0"></label>
       <label>メモ<input type="text" id="input-memo" placeholder="例：業務スーパー"></label>
+      <div class="modal-items-toggle" id="modal-items-toggle" onclick="toggleModalItems()">＋ 内訳を追加</div>
+      <div class="modal-items-section hidden" id="modal-items-section">
+        <div id="modal-items-list"></div>
+        <div class="modal-actions modal-actions-start">
+          <button type="button" class="btn-secondary" onclick="addModalItemRow()">＋ 品目を追加</button>
+        </div>
+      </div>
       <div class="modal-actions">
         <button id="modal-save" class="btn-primary">保存</button>
         <button id="modal-cancel" class="btn-secondary">キャンセル</button>
@@ -251,6 +277,21 @@
     </div>
   </div>
 
+  <!-- 支出の内訳 編集モーダル -->
+  <div id="expense-items-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>内訳を編集</h3>
+      <div id="expense-items-modal-list"></div>
+      <div class="modal-actions modal-actions-start">
+        <button type="button" class="btn-secondary" onclick="addExpenseItemsModalRow()">＋ 品目を追加</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="saveExpenseItemsModal()">保存</button>
+        <button class="btn-secondary" onclick="closeExpenseItemsModal()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 特別支出 費目追加モーダル -->
   <div id="special-item-modal" class="modal hidden">
     <div class="modal-content">
@@ -281,6 +322,8 @@
     </button>
   </nav>
 
+  <script src="firebase-config.js"></script>
+  <script src="sync.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
