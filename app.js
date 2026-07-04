@@ -16,6 +16,11 @@ function toggleBalanceOption(key) {
   renderInputSummary();
 }
 
+// スマホ幅では収支サマリー/変動費内訳カードを開閉できるようにする（PC幅では常に展開表示）
+function toggleCard(id) {
+  document.getElementById(id).classList.toggle('collapsed');
+}
+
 // 複数端末からの同時登録でもIDが衝突しないようにするため、連番でなくUUIDを使う
 function generateId() {
   return (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);

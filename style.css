@@ -231,6 +231,9 @@ body {
   align-items: baseline;
 }
 
+/* カードの開閉（モバイル幅のみ有効。PC幅では常に展開表示） */
+.card-toggle-icon { display: none; transition: transform 0.15s; }
+
 /* 収支サマリー統合カード */
 .summary-combined-card { display: flex; flex-direction: column; }
 
@@ -823,7 +826,6 @@ body {
   font-family: inherit;
   font-weight: 500;
 }
-.bottom-nav-item span:first-child { font-size: 20px; }
 .bottom-nav-item.active { color: var(--blue); font-weight: 700; }
 
 /* ===== レスポンシブ ===== */
@@ -848,4 +850,11 @@ body {
   .chart-legend-panel { width: 100%; flex-direction: row; flex-wrap: wrap; gap: 8px; }
   .fixed-grid { grid-template-columns: 1fr; }
   #sub-tabs { display: none; }
+
+  .chart-box.collapsible h4 { cursor: pointer; margin-bottom: 0; }
+  .chart-box.collapsible .card-toggle-icon { display: inline-block; }
+  .chart-box.collapsible:not(.collapsed) h4 { margin-bottom: 14px; }
+  .chart-box.collapsible:not(.collapsed) .card-toggle-icon { transform: rotate(180deg); }
+  .chart-box.collapsible.collapsed h4 { border-bottom: none; padding-bottom: 0; }
+  .chart-box.collapsible.collapsed .card-body { display: none; }
 }
