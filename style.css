@@ -78,6 +78,16 @@ body {
 .demo-btn:hover { opacity: 0.8; }
 .demo-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .demo-btn:disabled:hover { opacity: 0.35; }
+
+.current-pin-display {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.6;
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+}
+.current-pin-display.hidden { display: none; }
 .demo-load { background: var(--blue-light); color: var(--blue); }
 .demo-reset { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
 

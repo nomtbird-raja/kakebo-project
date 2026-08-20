@@ -36,6 +36,7 @@
       + '続けますか？';
     if (!confirm(msg)) return;
     localStorage.removeItem('kakebo_household_id');
+    localStorage.removeItem('kakebo_pin_display');
     location.reload();
   };
 
@@ -80,6 +81,8 @@
         submit.disabled = true;
         householdId = await sha256Hex(pin);
         localStorage.setItem('kakebo_household_id', householdId);
+        // ハッシュだけでは元の合言葉が分からないため、表示用に平文も別途保持しておく
+        localStorage.setItem('kakebo_pin_display', pin);
         gate.classList.add('hidden');
         resolve();
       };
@@ -182,16 +185,31 @@
   function clearLocalIfHouseholdChanged() {
     const marker = localStorage.getItem('kakebo_data_household');
     if (marker && marker !== householdId) {
+      const keep = new Set(['kakebo_household_id', 'kakebo_data_household', 'kakebo_pin_display']);
       Object.keys(localStorage)
-        .filter(k => k.startsWith('kakebo_') && k !== 'kakebo_household_id' && k !== 'kakebo_data_household')
+        .filter(k => k.startsWith('kakebo_') && !keep.has(k))
         .forEach(k => localStorage.removeItem(k));
     }
     localStorage.setItem('kakebo_data_household', householdId);
   }
 
+  // メニュー最下部に、今ログイン中の合言葉を薄く表示する
+  function showCurrentPin() {
+    const el = document.getElementById('current-pin-display');
+    if (!el) return;
+    const pin = localStorage.getItem('kakebo_pin_display');
+    if (pin) {
+      el.textContent = pin;
+      el.classList.remove('hidden');
+    } else {
+      el.classList.add('hidden');
+    }
+  }
+
   window.startApp = async function () {
     try {
       if (!householdId) await showPinGate();
+      showCurrentPin();
       await protectProductionHousehold();
       await auth.signInAnonymously();
 
