@@ -94,9 +94,11 @@ function switchPage(page) {
 
 function renderSubTabs() {
   const tabs = SUB_TABS[currentPage];
-  document.getElementById('sub-tabs').innerHTML = tabs.map(t =>
+  const html = tabs.map(t =>
     `<button class="sub-tab-btn${currentSub[currentPage] === t.id ? ' active' : ''}" data-sub="${t.id}">${t.label}</button>`
   ).join('');
+  document.getElementById('sub-tabs').innerHTML = html;
+  document.getElementById('sub-tabs-mobile').innerHTML = html;
   document.querySelectorAll('.sub-tab-btn').forEach(b => {
     b.addEventListener('click', () => switchSub(b.dataset.sub));
   });

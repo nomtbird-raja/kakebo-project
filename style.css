@@ -201,6 +201,9 @@ body {
   font-weight: 600;
 }
 
+/* モバイル用サブタブバー（PC幅ではヘッダー内のsub-tabsを使うため隠す） */
+.mobile-sub-tabs { display: none; }
+
 /* ===== MAIN CONTENT ===== */
 #main-content { flex: 1; overflow-y: auto; padding: 20px; }
 
@@ -902,6 +905,12 @@ body {
   .chart-legend-panel { width: 100%; flex-direction: row; flex-wrap: wrap; gap: 8px; }
   .fixed-grid { grid-template-columns: 1fr; }
   #sub-tabs { display: none; }
+  .mobile-sub-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .mobile-sub-tabs .sub-tab-btn { flex: 1; min-width: 0; }
 
   .chart-box.collapsible h4 { cursor: pointer; margin-bottom: 0; }
   .chart-box.collapsible .card-toggle-icon { display: inline-block; }
