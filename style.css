@@ -901,8 +901,7 @@ body {
   .summary-top-row { grid-template-columns: 1fr; }
   .summary-combined-inner { flex-direction: column; min-height: auto; }
   .summary-number-list { width: 100%; }
-  .summary-chart-area { min-height: 220px; }
-  .chart-legend-panel { width: 100%; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  .summary-chart-section { display: none; }
   .fixed-grid { grid-template-columns: 1fr; }
   #sub-tabs { display: none; }
   .mobile-sub-tabs {
