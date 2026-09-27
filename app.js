@@ -1,6 +1,6 @@
 const VARIABLE_CATEGORIES = ['食費','外食費','日用品','子供費','ひろき費','あさこ費','車費','医療費','その他'];
 const FIXED_INCOME_ITEMS = ['夫', '妻', 'ボーナス', 'その他'];
-const FIXED_ITEMS = ['住居費','電気','ガス','水道','教育費','通信費','保険'];
+const FIXED_ITEMS = ['住居費','電気','ガス','水道','教育費','通信費','保険','その他'];
 const SPECIAL_CATEGORIES = ['旅行','税金','保険','その他'];
 const TRAVEL_SUBCATEGORIES = ['交通費','宿泊費','外食費','おみやげ','イベント','その他'];
 const CAT_COLORS = ['#4a7c59','#6aab80','#f4a261','#e76f51','#457b9d','#a8dadc','#e9c46a','#2a9d8f','#aaa'];
