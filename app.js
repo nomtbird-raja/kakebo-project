@@ -656,12 +656,27 @@ function saveModal() {
   if (dayModal && !dayModal.classList.contains('hidden')) renderDayDetail(dayModal.dataset.date);
 }
 
-// カンマ付き数値入力のHTMLを生成
+// 「1000+2000」のように+区切りで入力された場合は合計してから確定する
+function resolveNumericInput(raw) {
+  const cleaned = raw.replace(/,/g, '');
+  if (/^[0-9]+(\+[0-9]+)+$/.test(cleaned)) {
+    return cleaned.split('+').reduce((s, n) => s + parseInt(n, 10), 0);
+  }
+  const n = parseInt(cleaned, 10);
+  return isNaN(n) ? null : n;
+}
+
+function formatNumericInput(el) {
+  const value = resolveNumericInput(el.value);
+  el.value = value ? value.toLocaleString() : '';
+}
+
+// カンマ付き数値入力のHTMLを生成（+区切りで入力すると足し算して確定する）
 function numericInput(dataKey, value) {
   const display = value ? Number(value).toLocaleString() : '';
-  return `<input type="text" inputmode="numeric" class="numeric-input" data-key="${dataKey}" value="${display}" placeholder="0"
+  return `<input type="text" inputmode="tel" class="numeric-input" data-key="${dataKey}" value="${display}" placeholder="0"
     onfocus="this.value=this.value.replace(/,/g,'')"
-    onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString():'';updateSectionTotal()"
+    onblur="formatNumericInput(this);updateSectionTotal();saveFixedTab(false)"
     oninput="updateSectionTotal()">`;
 }
 
@@ -706,7 +721,7 @@ function toggleWife() {
 }
 
 function parseNumericInput(el) {
-  return parseInt((el?.value || '').replace(/,/g, ''), 10) || 0;
+  return resolveNumericInput(el?.value || '') || 0;
 }
 
 function updateSectionTotal() {
@@ -721,15 +736,15 @@ function updateSectionTotal() {
   document.getElementById('fixed-total').textContent = fmt(fixedExpTotal);
 }
 
-function saveFixedTab() {
+function saveFixedTab(showAlert = true) {
   const data = {};
   document.querySelectorAll('.input-table input[data-key]').forEach(el => {
-    const v = parseInt(el.value.replace(/,/g, ''), 10);
-    if (!isNaN(v) && v > 0) data[el.dataset.key] = v;
+    const v = resolveNumericInput(el.value);
+    if (v > 0) data[el.dataset.key] = v;
   });
   saveFixed(data);
   renderInputSummary();
-  alert('保存しました');
+  if (showAlert) alert('保存しました');
 }
 
 // ===== 特別収入 =====
